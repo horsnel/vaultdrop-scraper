@@ -53,7 +53,8 @@ CATEGORY_KEYWORDS: dict[str, list[str]] = {
 class BloodStrikeScraper(BaseScraper):
     """Scrapes Blood Strike Reddit RSS feeds for leak / news content."""
 
-    GAME = "bloodstrike"
+    name = "bloodstrike"
+    game = "bloodstrike"
 
     # ------------------------------------------------------------------ #
     #  Public entry-point
@@ -99,13 +100,18 @@ class BloodStrikeScraper(BaseScraper):
         published_ts = self._parse_timestamp(published)
 
         return {
+            "type": "leak",
             "title": title,
-            "game": self.GAME,
+            "game": self.game,
             "category": category,
             "source_url": url,
+            "source_name": self._extract_subreddit(url),
             "thumbnail_url": thumbnail_url,
             "media_url": media_url,
-            "caption": caption,
+            "ai_caption": caption,
+            "description": "",
+            "severity": "normal",
+            "is_verified": False,
             "published_at": published_ts,
             "raw_data": {
                 "author": entry.get("author", ""),

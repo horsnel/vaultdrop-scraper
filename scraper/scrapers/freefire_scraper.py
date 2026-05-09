@@ -17,11 +17,11 @@ logger = logging.getLogger(__name__)
 FREEFIRE_RSS_FEEDS = [
     "https://www.reddit.com/r/freefire/new/.rss",
     "https://www.reddit.com/r/FreeFireLeaks/new/.rss",
-    "https://www.reddit.com/r/FreeFire_br/new/.rss",
+    "https://www.reddit.com/r/GarenaFreeFire/new/.rss",
 ]
 
 # Portuguese-language subreddits (for tagging)
-PORTUGUESE_SUBREDDITS = {"FreeFire_br"}
+PORTUGUESE_SUBREDDITS = {"GarenaFreeFire"}
 
 # Category classification keywords
 CATEGORY_KEYWORDS: dict[str, list[str]] = {
@@ -60,7 +60,8 @@ CATEGORY_KEYWORDS: dict[str, list[str]] = {
 class FreeFireScraper(BaseScraper):
     """Scrapes Free Fire Reddit RSS feeds for leak / news content."""
 
-    GAME = "freefire"
+    name = "freefire"
+    game = "freefire"
 
     # ------------------------------------------------------------------ #
     #  Public entry-point
@@ -110,13 +111,18 @@ class FreeFireScraper(BaseScraper):
         language = "pt" if subreddit in PORTUGUESE_SUBREDDITS else "en"
 
         return {
+            "type": "leak",
             "title": title,
-            "game": self.GAME,
+            "game": self.game,
             "category": category,
             "source_url": url,
+            "source_name": self._extract_subreddit(url),
             "thumbnail_url": thumbnail_url,
             "media_url": media_url,
-            "caption": caption,
+            "ai_caption": caption,
+            "description": "",
+            "severity": "normal",
+            "is_verified": False,
             "published_at": published_ts,
             "language": language,
             "raw_data": {

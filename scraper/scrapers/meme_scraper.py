@@ -30,7 +30,8 @@ IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".webp")
 class MemeScraper(BaseScraper):
     """Scrapes Reddit RSS search feeds for gaming meme images."""
 
-    GAME = "multi"
+    name = "meme_scraper"
+    game = "multi"
 
     # ------------------------------------------------------------------ #
     #  Public entry-point
@@ -95,13 +96,17 @@ class MemeScraper(BaseScraper):
         published_ts = self._parse_timestamp(published)
 
         return {
+            "type": "meme",
             "title": title,
             "game": game,
             "category": "meme",
             "source_url": url,
+            "source_name": self._extract_subreddit(url),
             "thumbnail_url": thumbnail_url,
+            "image_url": media_url,
             "media_url": media_url,
-            "caption": f"😂 {title}",
+            "ai_caption": f"😂 {title}",
+            "upvotes": 0,
             "published_at": published_ts,
             "raw_data": {
                 "author": entry.get("author", ""),

@@ -6,6 +6,7 @@ Reddit's JSON API requires OAuth2 credentials which are no longer
 obtainable, so we use public RSS (.rss) feeds instead.
 """
 
+import asyncio
 import logging
 import re
 import time
@@ -22,6 +23,10 @@ MEDIA_NS = "{http://search.yahoo.com/mrss/}"
 
 class BaseScraper:
     """Base class for all VaultDrop scrapers."""
+
+    # Subclasses must set these
+    name: str = "base"
+    game: str = "unknown"
 
     # ------------------------------------------------------------------ #
     #  Generic HTTP helpers (non-Reddit)
@@ -218,3 +223,36 @@ class BaseScraper:
             return gallery[0]
 
         return ""
+
+    # ------------------------------------------------------------------ #
+    #  Async wrapper for the scheduler
+    # ------------------------------------------------------------------ #
+
+    async def run(self) -> dict:
+        """Async entry point called by the scheduler.
+
+        Runs the synchronous scrape() in a thread pool so it
+        doesn't block the asyncio event loop.
+        """
+        logger.info(f"[{self.name}] Starting scrape...")
+        try:
+            loop = asyncio.get_event_loop()
+            items = await loop.run_in_executor(None, self.scrape)
+            logger.info(f"[{self.name}] Found {len(items)} items")
+            return {
+                "scraper": self.name,
+                "game": self.game,
+                "items": items,
+                "count": len(items),
+                "status": "success",
+            }
+        except Exception as e:
+            logger.error(f"[{self.name}] Scrape failed: {e}")
+            return {
+                "scraper": self.name,
+                "game": self.game,
+                "items": [],
+                "count": 0,
+                "status": "error",
+                "error": str(e),
+            }

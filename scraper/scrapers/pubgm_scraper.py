@@ -55,7 +55,8 @@ CATEGORY_KEYWORDS: dict[str, list[str]] = {
 class PUBGMScraper(BaseScraper):
     """Scrapes PUBG Mobile Reddit RSS feeds for leak / news content."""
 
-    GAME = "pubgm"
+    name = "pubgm"
+    game = "pubgm"
 
     # ------------------------------------------------------------------ #
     #  Public entry-point
@@ -101,13 +102,18 @@ class PUBGMScraper(BaseScraper):
         published_ts = self._parse_timestamp(published)
 
         return {
+            "type": "leak",
             "title": title,
-            "game": self.GAME,
+            "game": self.game,
             "category": category,
             "source_url": url,
+            "source_name": self._extract_subreddit(url),
             "thumbnail_url": thumbnail_url,
             "media_url": media_url,
-            "caption": caption,
+            "ai_caption": caption,
+            "description": "",
+            "severity": "normal",
+            "is_verified": False,
             "published_at": published_ts,
             "raw_data": {
                 "author": entry.get("author", ""),

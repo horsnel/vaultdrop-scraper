@@ -36,7 +36,8 @@ SEARCH_QUERIES = [
 class AdvanceServerTracker(BaseScraper):
     """Tracks advance / test server registration openings via Reddit RSS search."""
 
-    GAME = "multi"  # covers multiple games
+    name = "advance_server_tracker"
+    game = "multi"  # covers multiple games
 
     # ------------------------------------------------------------------ #
     #  Public entry-point
@@ -106,13 +107,15 @@ class AdvanceServerTracker(BaseScraper):
         published_ts = self._parse_timestamp(published)
 
         return {
+            "type": "advance_server",
             "title": title,
             "game": game,
             "category": "advance_server",
             "source_url": url,
+            "source_name": self._extract_subreddit(url),
             "thumbnail_url": thumbnail_url,
             "media_url": media_url,
-            "caption": f"🔓 {title}",
+            "ai_caption": f"🔓 {title}",
             "published_at": published_ts,
             "raw_data": {
                 "author": entry.get("author", ""),
@@ -122,99 +125,49 @@ class AdvanceServerTracker(BaseScraper):
         }
 
     # ------------------------------------------------------------------ #
-    #  Direct registration page checks (non-Reddit, kept as-is)
+    #  Direct registration page checks
     # ------------------------------------------------------------------ #
 
+    # Registration page targets (matching targets.yaml)
+    REGISTRATION_URLS = {
+        "freefire": "https://ff.garena.com/advance-server/",
+        "pubgm": "https://www.pubgmobile.com/en-US/beta/",
+    }
+
     def _check_registration_pages(self) -> list[dict]:
-        """Check known advance-server registration pages directly.
-
-        This method does NOT use Reddit — it pings official game
-        registration pages and looks for open-registration signals.
-        """
+        """Check known advance-server registration pages for status changes."""
         items: list[dict] = []
-
-        # CODM advance server
-        codm_item = self._check_codm_registration()
-        if codm_item:
-            items.append(codm_item)
-
-        # PUBGM beta
-        pubgm_item = self._check_pubgm_registration()
-        if pubgm_item:
-            items.append(pubgm_item)
-
-        # Free Fire advance server
-        ff_item = self._check_freefire_registration()
-        if ff_item:
-            items.append(ff_item)
-
+        for game_key, url in self.REGISTRATION_URLS.items():
+            try:
+                resp = self._fetch(url)
+                if not resp:
+                    continue
+                is_open = any(kw in resp.text.lower() for kw in (
+                    "register now", "sign up", "download now", "registration open",
+                    "join now", "apply now", "accepting applications",
+                ))
+                status = "open" if is_open else "closed"
+                items.append({
+                    "type": "advance_server",
+                    "game": game_key,
+                    "server_name": f"{game_key.upper()} Advance Server",
+                    "status": status,
+                    "registration_url": url,
+                    "source_url": url,
+                    "source_name": "Official",
+                    "title": f"{game_key.upper()} Advance Server registration is {status}",
+                    "category": "test_server",
+                    "notes": f"Registration page checked at {datetime.now(timezone.utc).isoformat()}",
+                    "thumbnail_url": "",
+                    "media_url": "",
+                    "ai_caption": f"🔓 {game_key.upper()} Advance Server registration is {status}",
+                    "severity": "high",
+                    "is_verified": False,
+                    "raw_data": {"source": "registration_page", "is_open": is_open},
+                })
+            except Exception as exc:
+                logger.debug(f"Registration check failed for {game_key}: {exc}")
         return items
-
-    def _check_codm_registration(self) -> dict | None:
-        """Check if CODM advance server registration is open."""
-        try:
-            resp = self._fetch(
-                "https://www.callofduty.com/mobile/advance-server"
-            )
-            if resp and "registration" in resp.text.lower():
-                return {
-                    "title": "CODM Advance Server Registration Open",
-                    "game": "codm",
-                    "category": "advance_server",
-                    "source_url": "https://www.callofduty.com/mobile/advance-server",
-                    "thumbnail_url": "",
-                    "media_url": "",
-                    "caption": "🔓 CODM Advance Server Registration Open",
-                    "published_at": datetime.now(timezone.utc).isoformat(),
-                    "raw_data": {"source": "official_page"},
-                }
-        except Exception as exc:
-            logger.debug("CODM registration check failed: %s", exc)
-        return None
-
-    def _check_pubgm_registration(self) -> dict | None:
-        """Check if PUBGM beta/test server registration is open."""
-        try:
-            resp = self._fetch(
-                "https://www.pubgmobile.com/beta"
-            )
-            if resp and "registration" in resp.text.lower():
-                return {
-                    "title": "PUBGM Beta Registration Open",
-                    "game": "pubgm",
-                    "category": "advance_server",
-                    "source_url": "https://www.pubgmobile.com/beta",
-                    "thumbnail_url": "",
-                    "media_url": "",
-                    "caption": "🔓 PUBGM Beta Registration Open",
-                    "published_at": datetime.now(timezone.utc).isoformat(),
-                    "raw_data": {"source": "official_page"},
-                }
-        except Exception as exc:
-            logger.debug("PUBGM registration check failed: %s", exc)
-        return None
-
-    def _check_freefire_registration(self) -> dict | None:
-        """Check if Free Fire advance server registration is open."""
-        try:
-            resp = self._fetch(
-                "https://advance-server.freefiremobile.com"
-            )
-            if resp and "registration" in resp.text.lower():
-                return {
-                    "title": "Free Fire Advance Server Registration Open",
-                    "game": "freefire",
-                    "category": "advance_server",
-                    "source_url": "https://advance-server.freefiremobile.com",
-                    "thumbnail_url": "",
-                    "media_url": "",
-                    "caption": "🔓 Free Fire Advance Server Registration Open",
-                    "published_at": datetime.now(timezone.utc).isoformat(),
-                    "raw_data": {"source": "official_page"},
-                }
-        except Exception as exc:
-            logger.debug("Free Fire registration check failed: %s", exc)
-        return None
 
     # ------------------------------------------------------------------ #
     #  Helpers
